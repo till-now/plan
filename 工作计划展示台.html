@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>工作计划展示台</title>
+<style>
+  :root{
+    --bg:#f3f5f9; --card:#ffffff; --line:#e5e8ef; --txt:#1f2733; --sub:#6b7686;
+    --brand:#2f6bff; --brand-d:#1f4fd0; --ok:#12a05c; --warn:#e08a00; --bad:#e33b3b;
+    --shadow:0 1px 2px rgba(20,30,50,.06),0 6px 18px rgba(20,30,50,.06);
+    --r:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--txt); font-size:16px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    padding-bottom:calc(72px + env(safe-area-inset-bottom));
+    line-height:1.5;
+  }
+  h1,h2,h3{margin:0;font-weight:650}
+  button,input,select,textarea{font-family:inherit}
+
+  header{
+    position:sticky; top:0; z-index:20; background:rgba(243,245,249,.92);
+    backdrop-filter:saturate(180%) blur(10px); border-bottom:1px solid var(--line);
+    padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+  }
+  .hd-top{display:flex;align-items:center;gap:10px}
+  .hd-top h1{font-size:19px;letter-spacing:.3px}
+  .hd-top .logo{width:26px;height:26px;flex:0 0 26px}
+  .hd-top .spacer{flex:1}
+  .hd-sub{font-size:12.5px;color:var(--sub);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap}
+  .hd-sub b{color:var(--txt);font-weight:700}
+
+  main{max-width:820px;margin:0 auto;padding:14px 12px 8px}
+  .tabpane{display:none}
+  .tabpane.on{display:block}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:14px;margin-bottom:14px}
+  .panel > h2{font-size:15.5px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .panel .hint{font-size:12.5px;color:var(--sub);margin:6px 0 10px}
+
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .row.tight{gap:6px}
+  select,input[type=text],input[type=number],input[type=date],input[type=file]{
+    font-size:16px; min-height:44px; padding:9px 11px; border:1px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--txt); outline:none; width:100%;
+  }
+  select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--sub) 50%),linear-gradient(135deg,var(--sub) 50%,transparent 50%);
+    background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:32px}
+  input[type=file]{padding:7px;font-size:14px}
+  input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(47,107,255,.14)}
+  .grow{flex:1;min-width:120px}
+  .w120{width:120px;flex:0 0 auto}
+  .w150{width:150px;flex:0 0 auto}
+
+  .btn{
+    min-height:44px; padding:0 15px; border-radius:11px; border:1px solid var(--line);
+    background:#fff; color:var(--txt); font-size:15px; font-weight:600; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  }
+  .btn svg{width:17px;height:17px;flex:0 0 17px}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:active{background:var(--brand-d)}
+  .btn.danger{color:var(--bad);border-color:#f3c9c9;background:#fff6f6}
+  .btn.ghost{background:#f6f8fc}
+  .btn[disabled]{opacity:.5;cursor:default}
+  .btn.wide{width:100%}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 8px;text-align:center}
+  .stat .n{font-size:21px;font-weight:750;line-height:1.2}
+  .stat .t{font-size:12px;color:var(--sub);margin-top:2px}
+  .stat.bad .n{color:var(--bad)} .stat.warn .n{color:var(--warn)} .stat.ok .n{color:var(--ok)}
+
+  .sec-title{font-size:13px;font-weight:700;color:var(--sub);letter-spacing:.5px;margin:16px 2px 8px;display:flex;align-items:center;gap:7px}
+  .sec-title .dot{width:8px;height:8px;border-radius:50%;background:var(--brand)}
+  .sec-title.bad .dot{background:var(--bad)}
+  .sec-title .cnt{font-weight:500;color:var(--sub)}
+
+  .card{
+    background:var(--card); border:1px solid var(--line); border-left:4px solid var(--line);
+    border-radius:12px; box-shadow:var(--shadow); padding:11px 12px; margin-bottom:10px;
+  }
+  .card.overdue{border-left-color:var(--bad); background:#fffafa}
+  .card.today{border-left-color:var(--warn)}
+  .card.done{border-left-color:var(--ok); background:#fbfefc}
+  .card.todo{border-left-color:#c8d0dd}
+  .c-top{display:flex;align-items:flex-start;gap:8px}
+  .c-name{font-size:16px;font-weight:650;flex:1;min-width:0;word-break:break-word}
+  .c-name.strike{text-decoration:line-through;color:var(--sub)}
+  .c-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+  .badge{font-size:11.5px;padding:1.5px 7px;border-radius:99px;background:#eef1f7;color:var(--sub);white-space:nowrap}
+  .badge.bad{background:#fdeaea;color:var(--bad);font-weight:600}
+  .badge.warn{background:#fdf3e0;color:#a56500;font-weight:600}
+  .badge.ok{background:#e7f7ee;color:var(--ok);font-weight:600}
+  .badge.brand{background:#e9f0ff;color:var(--brand-d);font-weight:600}
+  .c-meta{font-size:13px;color:var(--sub);margin-top:7px;display:flex;gap:6px 14px;flex-wrap:wrap}
+  .c-meta span b{color:var(--txt);font-weight:600}
+  .bar{height:7px;border-radius:99px;background:#eceff5;overflow:hidden;margin-top:9px}
+  .bar > i{display:block;height:100%;background:var(--brand);border-radius:99px;transition:width .2s}
+  .bar.done > i{background:var(--ok)}
+
+  .c-body{border-top:1px dashed var(--line);margin-top:10px;padding-top:10px;display:none}
+  .card.open .c-body{display:block}
+  .field{display:flex;flex-direction:column;gap:5px;flex:1;min-width:104px}
+  .field label{font-size:12px;color:var(--sub);font-weight:600}
+  .c-body .row{margin-bottom:9px}
+  .swatch{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{
+    min-height:44px;padding:0 12px;border-radius:99px;border:1px solid var(--line);background:#fff;
+    font-size:14px;font-weight:600;color:var(--sub);display:inline-flex;align-items:center;cursor:pointer;gap:5px
+  }
+  .pill.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .pill.on.ok{background:var(--ok);border-color:var(--ok)}
+
+  .empty{text-align:center;color:var(--sub);font-size:14px;padding:26px 10px}
+  .empty svg{width:56px;height:56px;opacity:.35;margin-bottom:6px}
+
+  .list-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .list-item:last-child{border-bottom:0}
+  .list-item .nm{flex:1;min-width:0;word-break:break-word}
+  .list-item .sub{font-size:12px;color:var(--sub)}
+
+  .drop{border:1.5px dashed #c3ccdb;border-radius:12px;padding:14px;text-align:center;color:var(--sub);font-size:13px;background:#fafbfe}
+  .drop.hi{border-color:var(--brand);background:#f2f6ff;color:var(--brand-d)}
+
+  nav.tabs{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
+    background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav.tabs button{
+    flex:1;min-height:60px;border:0;background:none;color:var(--sub);font-size:11.5px;font-weight:600;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer
+  }
+  nav.tabs button svg{width:22px;height:22px}
+  nav.tabs button.on{color:var(--brand)}
+
+  #toast{
+    position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,14px);
+    background:#1f2733;color:#fff;font-size:14px;padding:10px 16px;border-radius:99px;max-width:88vw;text-align:center;
+    opacity:0;pointer-events:none;transition:.22s;z-index:60
+  }
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+
+  .modal{position:fixed;inset:0;background:rgba(16,22,32,.45);display:none;align-items:center;justify-content:center;z-index:70;padding:18px}
+  .modal.on{display:flex}
+  .modal .box{background:#fff;border-radius:16px;padding:18px;max-width:400px;width:100%}
+  .modal .box h3{font-size:16px;margin-bottom:8px}
+  .modal .box p{font-size:14px;color:var(--sub);margin:0 0 14px}
+
+  .fallback{position:fixed;inset:0;background:rgba(16,22,32,.55);z-index:80;display:none;align-items:center;justify-content:center;padding:18px}
+  .fallback.on{display:flex}
+  .fallback .box{background:#fff;border-radius:16px;padding:18px;max-width:420px;width:100%;text-align:center}
+  .fallback .box a{display:inline-block;min-height:44px;line-height:44px;padding:0 20px;border-radius:11px;background:var(--brand);color:#fff;font-weight:700;text-decoration:none;margin:10px 0 6px}
+  .fallback .box small{display:block;color:var(--sub);font-size:12.5px;margin-top:8px}
+
+  @media (max-width:560px){
+    main{padding:12px 10px 8px}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .w120{width:calc(50% - 4px)}
+    .w150{width:100%}
+  }
+  @media (min-width:561px){
+    .w150{width:150px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-top">
+    <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="#2f6bff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v3H9z"/><path d="M15 4.5h2A2 2 0 0 1 19 6.5V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6.5a2 2 0 0 1 2-2h2"/><path d="m9 13 2 2 4-4"/></svg>
+    <h1>工作计划展示台</h1>
+    <div class="spacer"></div>
+    <button class="btn ghost" id="btnQuickAdd" style="min-height:44px;padding:0 12px;font-size:14px">+ 新增</button>
+  </div>
+  <div class="hd-sub" id="hdSub"></div>
+</header>
+
+<main>
+  <!-- ============ 计划 ============ -->
+  <section class="tabpane on" id="pane-plan">
+    <div class="panel">
+      <div class="row">
+        <div class="field" style="max-width:210px">
+          <label for="monthSel">查看月份</label>
+          <select id="monthSel"></select>
+        </div>
+        <div class="field" style="max-width:150px">
+          <label for="statusSel">筛选</label>
+          <select id="statusSel">
+            <option value="all">全部</option>
+            <option value="todo">未完成</option>
+            <option value="overdue">逾期未完成</option>
+            <option value="doing">进行中</option>
+            <option value="done">已完成</option>
+          </select>
+        </div>
+        <div class="field" style="max-width:170px">
+          <label for="searchInp">搜索</label>
+          <input id="searchInp" type="text" placeholder="计划名称 / 联系人">
+        </div>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <div id="pinnedWrap"></div>
+    <div id="listWrap"></div>
+  </section>
+
+  <!-- ============ 导入 ============ -->
+  <section class="tabpane" id="pane-import">
+    <div class="panel">
+      <h2>导入工作计划.xlsx</h2>
+      <p class="hint">表名即年月（如 <b>202609</b> 或 <b>2026年9月</b>），B 列的“几号”会自动与年月拼成具体日期。可多选文件、可拖拽。</p>
+      <div class="drop" id="dropPlan">点击选择文件，或把 Excel 拖到这里</div>
+      <input type="file" id="filePlan" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple hidden>
+    </div>
+
+    <div class="panel">
+      <h2>导入月度标准计划.xlsx</h2>
+      <p class="hint">标准动作里的“几号”会与下方所选月份拼成具体日期，带入到该月计划中。</p>
+      <div class="row" style="margin-bottom:10px">
+        <div class="field" style="max-width:210px">
+          <label for="stdMonth">带入到哪个月</label>
+          <select id="stdMonth"></select>
+        </div>
+      </div>
+      <div class="drop" id="dropStd">点击选择标准计划文件，或拖到这里</div>
+      <input type="file" id="fileStd" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple hidden>
+    </div>
+
+    <div class="panel">
+      <h2>手工新增一件事</h2>
+      <p class="hint">没有 Excel 时也能直接录入。</p>
+      <div class="row" style="margin-bottom:9px">
+        <div class="field grow"><label for="nName">计划名称</label><input id="nName" type="text" placeholder="例如：月度经营分析会"></div>
+      </div>
+      <div class="row" style="margin-bottom:9px">
+        <div class="field"><label for="nMonth">月份</label><input id="nMonth" type="text" inputmode="numeric" placeholder="202609"></div>
+        <div class="field"><label for="nDay">几号</label><input id="nDay" type="number" min="1" max="31" placeholder="15"></div>
+        <div class="field"><label for="nDur">计划工期(天)</label><input id="nDur" type="number" min="1" placeholder="1"></div>
+      </div>
+      <div class="row" style="margin-bottom:9px">
+        <div class="field"><label for="nPerson">联系人</label><input id="nPerson" type="text" placeholder="张三"></div>
+        <div class="field"><label for="nCycle">工作周期</label><input id="nCycle" type="text" placeholder="每月一次"></div>
+      </div>
+      <button class="btn primary wide" id="btnAddManual">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>加入计划
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ 备份 ============ -->
+  <section class="tabpane" id="pane-data">
+    <div class="panel">
+      <h2>备份与恢复</h2>
+      <p class="hint">数据默认存在本机浏览器（localStorage）。换电脑或换浏览器时，用 JSON 备份搬过去。</p>
+      <div class="row" style="margin-bottom:9px">
+        <button class="btn primary grow" id="btnExportJson">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>导出 JSON 备份
+        </button>
+        <button class="btn ghost grow" id="btnImportJson">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V9"/><path d="m7 14 5-5 5 5"/><path d="M5 4h14"/></svg>导入 JSON 备份
+        </button>
+      </div>
+      <div class="row" style="margin-bottom:9px">
+        <button class="btn primary wide" id="btnExportXlsx">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5"/><path d="M9 13l4 5M13 13l-4 5"/></svg>导出 Excel（按月分表，可再导回）
+        </button>
+      </div>
+      <input type="file" id="fileJson" accept=".json,application/json" hidden>
+    </div>
+
+    <div class="panel">
+      <h2>按“月”删除计划</h2>
+      <p class="hint">删除后不可撤销，建议先导出 JSON 备份。已完成的项目不计入“进行中”统计。</p>
+      <div class="row" style="margin-bottom:9px">
+        <div class="field" style="max-width:210px">
+          <label for="delMonth">要删除的月份</label>
+          <select id="delMonth"></select>
+        </div>
+        <button class="btn danger" id="btnDelMonth" style="align-self:flex-end">删除该月</button>
+      </div>
+      <div class="row">
+        <button class="btn danger" id="btnClearAll">清空全部数据</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>云端同步（多设备）</h2>
+      <p class="hint">在 Supabase 建一张表，各设备填同一组「项目地址 + 公开密钥 + 团队码」，进度就自动互通。数据存在你自己的 Supabase 项目里。</p>
+      <div class="row" style="margin-bottom:9px">
+        <div class="field grow"><label for="sbUrl">项目地址 Project URL</label><input id="sbUrl" type="text" placeholder="https://xxxx.supabase.co" autocomplete="off"></div>
+      </div>
+      <div class="row" style="margin-bottom:9px">
+        <div class="field grow"><label for="sbKey">公开密钥 anon public key</label><input id="sbKey" type="text" placeholder="eyJhbGciOi..." autocomplete="off"></div>
+      </div>
+      <div class="row" style="margin-bottom:9px">
+        <div class="field grow"><label for="sbTeam">团队码（自己定，所有设备填一样）</label><input id="sbTeam" type="text" placeholder="例如 tianhao-2026"></div>
+      </div>
+      <div class="row" style="margin-bottom:9px">
+        <button class="btn primary grow" id="btnSyncNow">立即同步</button>
+        <button class="btn ghost grow" id="btnSyncSave">保存设置</button>
+      </div>
+      <div id="syncStatus" style="font-size:13px;color:#6b7686;line-height:1.7"></div>
+      <div class="row tight" style="margin-top:10px">
+        <button class="btn ghost grow" id="btnCopySql">复制建表 SQL</button>
+        <button class="btn ghost grow" id="btnSyncOff">关闭同步</button>
+      </div>
+      <details style="margin-top:12px">
+        <summary style="cursor:pointer;font-size:13.5px;font-weight:600;color:#2f6bff">第一次用？点这看 4 步配置说明</summary>
+        <ol style="font-size:13px;color:#6b7686;padding-left:20px;line-height:1.9;margin:8px 0 0">
+          <li>打开 <b>supabase.com</b> 注册并新建项目（免费额度够个人用）。</li>
+          <li>左侧 <b>SQL Editor</b> → New query → 粘贴上方「建表 SQL」→ Run。</li>
+          <li>左侧 <b>Settings → API</b>，复制 <b>Project URL</b> 与 <b>anon public</b> 两个值填到上面。</li>
+          <li>自己起一个团队码填上（所有设备必须一致），点「保存设置」→「立即同步」。</li>
+        </ol>
+        <p style="font-size:12.5px;color:#8a94a6;margin:8px 0 0">只能填 <b>anon public</b> 密钥（它本就设计为公开）；不要填 service_role 密钥。</p>
+      </details>
+      <textarea id="sqlBox" readonly hidden></textarea>
+    </div>
+
+    <div class="panel">
+      <h2>数据概览</h2>
+      <div id="overview"></div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button data-tab="plan" class="on">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>计划
+  </button>
+  <button data-tab="import">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>导入
+  </button>
+  <button data-tab="data">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>备份
+  </button>
+</nav>
+
+<div id="toast"></div>
+
+<div class="modal" id="confirmModal">
+  <div class="box">
+    <h3 id="cmTitle">确认</h3>
+    <p id="cmText"></p>
+    <div class="row">
+      <button class="btn ghost grow" id="cmCancel">取消</button>
+      <button class="btn danger grow" id="cmOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="fallback" id="fallbackModal">
+  <div class="box">
+    <h3>请长按 / 右键保存</h3>
+    <p style="font-size:13.5px;color:#6b7686;margin:6px 0 0">当前浏览器拦截了自动下载，请点击下面的链接后长按（手机）或右键（电脑）选择“存储为”。</p>
+    <a id="fallbackLink" download>点这里打开文件</a>
+    <button class="btn ghost wide" id="fallbackClose">关闭</button>
+    <small>提示：桌面浏览器可直接右键该链接 → 链接存储为…</small>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   工作计划展示台 · 单文件离线版
+   数据流：Excel(.xlsx) --原生解压/解析--> 内存数据 --localStorage--> 页面
+   导出：JSON 备份 / Excel（手拼 OOXML，每行 <row> 包裹）
+   ========================================================================= */
+
+/* ------------------------------- 基础工具 ------------------------------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
+const esc = s => String(s == null ? "" : s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+function pad2(n) { return (n < 10 ? "0" : "") + n; }
+function todayStr() { const d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+function nowStr() { const d = new Date(); return todayStr() + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("on"), 2400);
+}
+function confirmBox(title, text, okText) {
+  return new Promise(resolve => {
+    const m = $("#confirmModal");
+    $("#cmTitle").textContent = title; $("#cmText").textContent = text;
+    $("#cmOk").textContent = okText || "确定";
+    m.classList.add("on");
+    const done = v => { m.classList.remove("on"); $("#cmOk").onclick = null; $("#cmCancel").onclick = null; resolve(v); };
+    $("#cmOk").onclick = () => done(true);
+    $("#cmCancel").onclick = () => done(false);
+  });
+}
+
+/* --------------------------- 安全下载（三级降级） --------------------------- */
+/**
+ * file:// 环境下也尽量可用：
+ *  1) data: URI 直接赋值 a.download 点击
+ *  2) Blob + URL.createObjectURL
+ *  3) 页内兜底链接（长按 / 右键保存）
+ * 不把 a.click() 当成唯一手段。
+ */
+function collectBlob(parts, mime) {
+  const chunks = parts.map(p => {
+    if (p instanceof Uint8Array) return p;
+    if (p instanceof ArrayBuffer) return new Uint8Array(p);
+    return new TextEncoder().encode(String(p));
+  });
+  return new Blob(chunks, { type: mime || "application/octet-stream" });
+}
+
+function safeDownload(filename, parts, mime) {
+  let blob;
+  try { blob = collectBlob(parts, mime); }
+  catch (e) { showFallback(filename, null); toast("数据准备失败：" + e.message); return false; }
+
+  // 第一级：data URI 直下
+  try {
+    const fr = new FileReader();
+    let settled = false;
+    fr.onload = function () {
+      if (settled) return; settled = true;
+      const a = document.createElement("a");
+      a.href = fr.result; a.download = filename; a.rel = "noopener";
+      a.style.position = "fixed"; a.style.left = "-9999px";
+      document.body.appendChild(a);
+      let ok = false;
+      try { a.click(); ok = true; } catch (e) { ok = false; }
+      setTimeout(() => { try { a.remove(); } catch (e) {} }, 1500);
+      if (!ok) level2();
+    };
+    fr.onerror = function () { if (!settled) { settled = true; level2(); } };
+    setTimeout(() => { if (!settled) { settled = true; level2(); } }, 6000); // 大文件兜底
+    fr.readAsDataURL(blob);
+    return true;
+  } catch (e) { return level2(); }
+
+  // 第二级：Blob + createObjectURL
+  function level2() {
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.rel = "noopener";
+      a.style.position = "fixed"; a.style.left = "-9999px";
+      document.body.appendChild(a);
+      let ok = false;
+      try { a.click(); ok = true; } catch (e) { ok = false; }
+      setTimeout(() => { try { a.remove(); URL.revokeObjectURL(url); } catch (e) {} }, 8000);
+      if (!ok) return level3();
+      return true;
+    } catch (e) { return level3(); }
+  }
+
+  // 第三级：页内兜底链接
+  function level3() {
+    try {
+      const url = URL.createObjectURL(blob);
+      showFallback(filename, url);
+      return true;
+    } catch (e) {
+      // 连 createObjectURL 都不可用 -> 显示文件信息，提示用户
+      showFallback(filename, null);
+      toast("浏览器不支持下载，请改用桌面浏览器导出");
+      return false;
+    }
+  }
+}
+
+function showFallback(filename, url) {
+  const m = $("#fallbackModal"), link = $("#fallbackLink");
+  if (url) { link.href = url; link.setAttribute("download", filename); link.textContent = "点这里打开 " + filename; }
+  else { link.removeAttribute("href"); link.removeAttribute("download"); link.textContent = filename + "（无法生成下载链接）"; }
+  m.classList.add("on");
+}
+
+/* --------------------------- 日期 / 数值解析 --------------------------- */
+/** Excel 日期序列号 -> {y,m,d}（1900 日期系统，含 1900 闰年 bug 偏移） */
+function serialToDate(n) {
+  const days = Math.floor(n);
+  const ms = Math.round((n - days) * 86400) * 1000;
+  const d = new Date(Date.UTC(1899, 11, 30));
+  d.setUTCDate(d.getUTCDate() + days);          // 用 setUTCDate 避免毫秒溢出（跨月/跨年更稳）
+  d.setUTCMilliseconds(d.getUTCMilliseconds() + ms);
+  return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
+}
+/** 数值：1~31 视为“当月几号”，更大视为 Excel 日期序列号 */
+function numberToDate(n) {
+  if (!isFinite(n)) return null;
+  if (n >= 1 && n <= 31) return { y: null, m: null, d: Math.round(n) };
+  if (n > 31 && n < 80000) return serialToDate(n);
+  return null;
+}
+/** 任意输入 -> {y,m,d} 或 null（避免 NaN / 空白） */
+function parseAnyDate(v) {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") return numberToDate(v);
+  let s = String(v).trim();
+  if (!s) return null;
+  // 纯数字串：1~31 当“几号”，5 位以上当序列号
+  if (/^\d{1,2}$/.test(s)) { const n = +s; return (n >= 1 && n <= 31) ? { y: null, m: null, d: n } : null; }
+  if (/^\d{5}(\.\d+)?$/.test(s)) return serialToDate(parseFloat(s));
+  let m = s.match(/(\d{4})\s*[-/年.]\s*(\d{1,2})\s*[-/月.]\s*(\d{1,2})/);
+  if (m) return { y: +m[1], m: +m[2], d: +m[3] };
+  m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) return { y: +m[1], m: +m[2], d: +m[3] };
+  m = s.match(/^(\d{1,2})\s*[-/月]\s*(\d{1,2})\s*日?$/);
+  if (m) return { y: null, m: +m[1], d: +m[2] };
+  m = s.match(/(\d{4})\s*[-/年.]\s*(\d{1,2})/);
+  if (m) return { y: +m[1], m: +m[2], d: 1 };
+  m = s.match(/(\d{1,2})\s*月/);
+  if (m) return { y: null, m: +m[1], d: 1 };
+  const t = Date.parse(s.replace(/年|月/g, "-").replace(/日/g, ""));
+  if (!isNaN(t)) { const d = new Date(t); return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }; }
+  return null;
+}
+/** 取“当月几号”：优先日号，其次月内任意日期 */
+function toDay(v, fallbackMonth) {
+  const p = parseAnyDate(v);
+  if (p) return p.d;
+  if (v == null || v === "") return null;
+  const s = String(v).trim();
+  if (/^\d{1,2}$/.test(s)) { const n = +s; if (n >= 1 && n <= 31) return n; }
+  let m = s.match(/(\d{1,2})\s*[号日]/);
+  if (m) { const n = +m[1]; if (n >= 1 && n <= 31) return n; }
+  if (fallbackMonth) {
+    const t = Date.parse(s);
+    if (!isNaN(t)) { const d = new Date(t); if (d.getMonth() + 1 === fallbackMonth) return d.getDate(); }
+  }
+  return null;
+}
+function parseMonthKey(v) {
+  if (v == null || v === "") return null;
+  if (typeof v === "number" && isFinite(v) && v > 200001 && v < 300000) return String(Math.round(v));
+  const s = String(v).trim();
+  let m = s.match(/(20\d{2})\s*[-/年.]?\s*(\d{1,2})/);
+  if (m) return m[1] + pad2(+m[2]);
+  m = s.match(/^(\d{4})(\d{2})$/);
+  if (m) return m[1] + m[2];
+  m = s.match(/(\d{1,2})\s*月/);
+  if (m) {
+    const y = s.match(/(20\d{2})/);
+    if (y) return y[1] + pad2(+m[1]);
+  }
+  return null;
+}
+function monthKeyOf(y, mo) { return y + pad2(mo); }
+function mkDate(monthKey, day) {
+  if (!monthKey || !day) return "";
+  return monthKey.slice(0, 4) + "-" + monthKey.slice(4, 6) + "-" + pad2(Math.max(1, Math.min(31, day)));
+}
+function daysInMonth(monthKey) {
+  const y = +monthKey.slice(0, 4), m = +monthKey.slice(4, 6);
+  return new Date(y, m, 0).getDate();
+}
+function clampDay(monthKey, day) {
+  if (!day) return null;
+  return Math.max(1, Math.min(daysInMonth(monthKey), Math.round(day)));
+}
+function monthLabel(key) { return key ? key.slice(0, 4) + "年" + (+key.slice(4, 6)) + "月" : "未标月份"; }
+function addDays(iso, n) {
+  const p = parseAnyDate(iso); if (!p) return "";
+  const d = new Date(p.y, p.m - 1, p.d); d.setDate(d.getDate() + (+n || 0));
+  return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+}
+function fmtDate(iso) {
+  const p = parseAnyDate(iso); if (!p) return "—";
+  return p.y + "-" + pad2(p.m) + "-" + pad2(p.d);
+}
+function weekdayCN(iso) {
+  const p = parseAnyDate(iso); if (!p) return "";
+  const w = ["日", "一", "二", "三", "四", "五", "六"][new Date(p.y, p.m - 1, p.d).getDay()];
+  return "周" + w;
+}
+const num = v => { const n = parseFloat(String(v == null ? "" : v).replace(/[^\d.\-]/g, "")); return isNaN(n) ? null : n; };
+
+/* ------------------------------- 数据模型 ------------------------------- */
+const STORE_KEY = "workplan.desk.v1";
+const SYNC_KEY = "workplan.desk.sync.v1";
+const SYNC_TABLE = "plans";
+// 同步运行时状态：必须在任何 saveState() 之前初始化（saveState 会调用 syncSchedule）
+const DC = { db: null, dirty: false, lastErr: "", timer: null, busy: false, localReady: false, lastLocal: null };
+/**
+ * state:
+ *   items   数组（页面各处使用，保持老接口不变）
+ *   deleted 删除墓碑 { id: ISO时间 }，仅用于把"删除"同步到其它设备
+ *   每个 item 额外带 rev(修改版本)、syncedAt(上次同步时的云端时间)，供合并判定
+ */
+let state = { items: [], deleted: {}, updatedAt: "" };
+let ui = { month: "", filter: "all", q: "", open: {} };
+
+/**
+ * 完成判定（唯一出口）：
+ *   完成态 / 进度 ≥ 100 / 有完成日期  —— 任一成立即“已完成”
+ */
+function isDone(it) {
+  if (!it) return false;
+  if (it.done === true || it.done === "已完成" || it.done === "是" || it.done === "true" || it.done === 1) return true;
+  const p = num(it.percent);
+  if (p != null && p >= 100) return true;
+  if (it.doneDate && String(it.doneDate).trim() !== "") return true;
+  return false;
+}
+function isOverdue(it) { return !isDone(it) && !!it.startDate && it.startDate < todayStr(); }
+function isToday(it) { return !!it.startDate && it.startDate === todayStr(); }
+/** 正在做：未完成，且（未开工未逾期 → 属于“进行中”统计口径） */
+function isDoing(it) { return !isDone(it); }
+function effPercent(it) {
+  if (isDone(it)) return 100;                       // 完成态 / 有完成日期 / 进度>=100
+  const p = num(it.percent); return p == null ? 0 : Math.max(0, Math.min(99, Math.round(p)));
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    if (obj && Array.isArray(obj.items)) {
+      state = { items: obj.items, deleted: obj.deleted && typeof obj.deleted === "object" ? obj.deleted : {}, updatedAt: obj.updatedAt || "" };
+    }
+    // 兜底：老数据没有 rev，补 1，避免合并时被判为"更旧"
+    state.items.forEach(it => { if (it && it.id && !it.rev) it.rev = 1; });
+  } catch (e) { console.warn("读取本地数据失败", e); }
+}
+function uid() { return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+/** 记录一次本地改动：只在"真的动了内容"时打戳，避免同步回来的数据被误判成新改动 */
+const CONTENT_KEYS = ["name", "day", "month", "planDays", "actStartDate", "actDays", "percent", "person", "cycle", "done", "doneDate", "startDate"];
+function touchItems() {
+  const now = new Date().toISOString();
+  state.items.forEach(it => {
+    if (!it) return;
+    if (!it.rev) { it.rev = 1; it.revAt = it.revAt || now; it._snap = CONTENT_KEYS.map(k => it[k]).join("\u0001"); return; }
+    const snap = CONTENT_KEYS.map(k => it[k]).join("\u0001");
+    if (snap !== it._snap) { it.rev = (it.rev || 0) + 1; it.revAt = now; it._snap = snap; }
+  });
+}
+function saveState(silent) {
+  state.updatedAt = nowStr();
+  touchItems();
+  try {
+    const plain = Object.assign({}, state, { items: state.items.map(it => { const c = Object.assign({}, it); delete c._snap; return c; }) });
+    localStorage.setItem(STORE_KEY, JSON.stringify(plain));
+  }
+  catch (e) { toast("保存失败：本地存储可能已满"); }
+  if (!silent) renderAll();
+  if (DC.localReady) syncLocalPush();       // 走"服务器同步"时推给服务器
+  else syncSchedule();                      // 走"Supabase 同步"时走原逻辑
+}
+function allMonths() {
+  const set = {};
+  state.items.forEach(it => { if (it.month) set[it.month] = 1; });
+  return Object.keys(set).sort();
+}
+function monthStats(mk) {
+  const list = state.items.filter(it => !mk || it.month === mk);
+  let total = list.length, done = 0, overdue = 0, doing = 0, todayN = 0;
+  list.forEach(it => {
+    if (isDone(it)) done++;
+    else { doing++; if (isOverdue(it)) overdue++; if (isToday(it)) todayN++; }
+  });
+  return { total, done, overdue, doing, todayN };
+}
+
+/* ---------------------------- Excel 读取（原生） ---------------------------- */
+/** 原生解压：优先 DecompressionStream('deflate-raw')，退化到 DecompressionStream('deflate') */
+function inflateRaw(bytes) {
+  const tryOne = fmt => {
+    if (typeof DecompressionStream !== "function") return Promise.reject(new Error("no DecompressionStream"));
+    const ds = new DecompressionStream(fmt);
+    const stream = new Blob([bytes]).stream().pipeThrough(ds);
+    return new Response(stream).arrayBuffer().then(ab => new Uint8Array(ab));
+  };
+  return tryOne("deflate-raw").catch(() => tryOne("deflate").catch(() => {
+    throw new Error("当前浏览器不支持 DecompressionStream，请用新版 Chrome/Edge/Safari 打开");
+  }));
+}
+function u16(u8, p) { return u8[p] | (u8[p + 1] << 8); }
+function u32(u8, p) { return (u8[p] | (u8[p + 1] << 8) | (u8[p + 2] << 16) | (u8[p + 3] << 24)) >>> 0; }
+
+async function unzipXlsx(arrayBuffer) {
+  const u8 = new Uint8Array(arrayBuffer);
+  const files = {};
+  // 1) 找 End of Central Directory
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= 0 && i > u8.length - 70000; i--) {
+    if (u8[i] === 0x50 && u8[i + 1] === 0x4b && u8[i + 2] === 0x05 && u8[i + 3] === 0x06) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("不是有效的 xlsx（zip）文件");
+  const count = u16(u8, eocd + 10);
+  let off = u32(u8, eocd + 16);
+  const entries = [];
+  for (let i = 0; i < count; i++) {
+    if (u32(u8, off) !== 0x02014b50) break;
+    const method = u16(u8, off + 10);
+    const csize = u32(u8, off + 20);
+    const nlen = u16(u8, off + 28), elen = u16(u8, off + 30), clen = u16(u8, off + 32);
+    const lho = u32(u8, off + 42);
+    const name = new TextDecoder("utf-8").decode(u8.subarray(off + 46, off + 46 + nlen));
+    entries.push({ name, method, csize, lho });
+    off += 46 + nlen + elen + clen;
+  }
+  for (const e of entries) {
+    if (e.name.slice(-1) === "/") continue;
+    const lho = e.lho;
+    const lnlen = u16(u8, lho + 26), lelen = u16(u8, lho + 28);
+    const dataStart = lho + 30 + lnlen + lelen;
+    let data = u8.subarray(dataStart, dataStart + (e.csize || (u8.length - dataStart)));
+    if (e.method === 0) files[e.name] = data;
+    else if (e.method === 8) files[e.name] = await inflateRaw(data);
+    else throw new Error("不支持的解压方式：" + e.method);
+  }
+  return files;
+}
+const dec = new TextDecoder("utf-8");
+function readText(files, name) {
+  const f = files[name];
+  if (!f) return "";
+  return dec.decode(f);
+}
+function attr(xml, tag, name) {
+  const m = xml.match(new RegExp("<" + tag + "\\b[^>]*\\b" + name + '="([^"]*)"'));
+  return m ? m[1] : "";
+}
+function colToIdx(ref) {
+  const m = String(ref).match(/^([A-Z]+)\d*$/); if (!m) return -1;
+  let n = 0; for (let i = 0; i < m[1].length; i++) n = n * 26 + (m[1].charCodeAt(i) - 64);
+  return n - 1;
+}
+function idxToCol(i) {
+  let s = ""; i = i + 1;
+  while (i > 0) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); }
+  return s;
+}
+function parseSharedStrings(xml) {
+  const out = [];
+  if (!xml) return out;
+  const siRe = /<si\b[^>]*>([\s\S]*?)<\/si>/g;
+  let m;
+  while ((m = siRe.exec(xml))) {
+    const inner = m[1];
+    let txt = "";
+    const tRe = /<t\b[^>]*>([\s\S]*?)<\/t>/g;
+    let t;
+    while ((t = tRe.exec(inner))) txt += t[1];
+    out.push(unescXml(txt));
+  }
+  return out;
+}
+function unescXml(s) {
+  return String(s).replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (m, d) => String.fromCharCode(+d))
+    .replace(/&amp;/g, "&");
+}
+function parseSheetXml(xml, shared) {
+  const rows = [];
+  const rowRe = /<row\b([^>]*)>([\s\S]*?)<\/row>/g;
+  let rm;
+  while ((rm = rowRe.exec(xml))) {
+    const rAttr = rm[1], body = rm[2];
+    const rIdx = parseInt(attr(rAttr, "row", "r") || attr("<row " + rAttr + ">", "row", "r"), 10);
+    const cells = [];
+    let lastCol = -1;
+    const cRe = /<c\b([^>]*?)(\/>|>([\s\S]*?)<\/c>)/g;
+    let cm;
+    while ((cm = cRe.exec(body))) {
+      const cAttr = cm[1], inner = cm[3] || "";
+      const ref = attr("<c " + cAttr + ">", "c", "r");
+      const type = attr("<c " + cAttr + ">", "c", "t");
+      let ci = colToIdx(ref);
+      if (ci < 0) ci = lastCol + 1;   // 部分导出器省略 r，按顺序推断列
+      lastCol = ci;
+      let val = null;
+      if (type === "inlineStr") {
+        let txt = ""; const tRe = /<t\b[^>]*>([\s\S]*?)<\/t>/g; let t;
+        while ((t = tRe.exec(inner))) txt += t[1];
+        val = unescXml(txt);
+      } else {
+        const vm = inner.match(/<v\b[^>]*>([\s\S]*?)<\/v>/);
+        if (vm) {
+          const raw = unescXml(vm[1]);
+          if (type === "s") { const i = parseInt(raw, 10); val = shared[i] != null ? shared[i] : ""; }
+          else if (type === "str") val = raw;
+          else if (type === "b") val = raw === "1";
+          else { const n = parseFloat(raw); val = isNaN(n) ? raw : n; }
+        }
+      }
+      if (ci >= 0) cells[ci] = val;
+    }
+    if (rIdx && rIdx > 0) rows[rIdx - 1] = cells; else rows.push(cells);
+  }
+  for (let i = 0; i < rows.length; i++) if (!rows[i]) rows[i] = [];
+  return rows;
+}
+function parseWorkbook(files) {
+  const shared = parseSharedStrings(readText(files, "xl/sharedStrings.xml"));
+  // 工作表顺序 + 名称
+  const wbPath = files["xl/workbook.xml"] ? "xl/workbook.xml" : (files["xl/workbook.bin"] ? "" : "xl/workbook.xml");
+  const wbXml = readText(files, wbPath);
+  const relXml = readText(files, "xl/_rels/workbook.xml.rels");
+  const relMap = {};
+  const relRe = /<Relationship\b[^>]*?\/?>/g; let rm;
+  while ((rm = relRe.exec(relXml))) {
+    const id = attr(rm[0], "Relationship", "Id");
+    let target = attr(rm[0], "Relationship", "Target");
+    if (target && target.slice(0, 1) === "/") target = target.slice(1);
+    else if (target && target.indexOf("xl/") !== 0) target = "xl/" + target.replace(/^\.\//, "");
+    relMap[id] = target;
+  }
+  const sheets = [];
+  const shRe = /<sheet\b[^>]*\/?>/g; let sm;
+  while ((sm = shRe.exec(wbXml))) {
+    const name = attr(sm[0], "sheet", "name");
+    const rid = attr(sm[0], "sheet", "r:id") || attr(sm[0], "sheet", "id");
+    const target = relMap["rId" + String(rid).replace(/^rId/, "")] || relMap[rid];
+    sheets.push({ name, path: target });
+  }
+  const out = [];
+  sheets.forEach((sh, i) => {
+    let path = sh.path;
+    if (!path || !files[path]) path = "xl/worksheets/sheet" + (i + 1) + ".xml";
+    if (!files[path]) return;
+    out.push({ name: sh.name, rows: parseSheetXml(readText(files, path), shared) });
+  });
+  return out;
+}
+
+/** 表行 -> 计划对象（A..H；导出的文件含 I 完成状态，容忍） */
+function rowsToItems(sheetName, rows, forcedMonth) {
+  const month = forcedMonth || parseMonthKey(sheetName) || parseMonthKey(rows.length ? rows[0][0] : "");
+  const items = [];
+  let headerSkipped = false;
+  rows.forEach((r, i) => {
+    const name = r[0] == null ? "" : String(r[0]).trim();
+    if (!name) return;
+    if (!headerSkipped && i <= 2 && /计划名称|计划|任务名称/.test(name)) { headerSkipped = true; return; }
+    let day = toDay(r[1], month ? +month.slice(4, 6) : null);
+    if (day == null) {
+      const dp = parseAnyDate(r[1]);
+      if (dp) day = dp.d;
+    }
+    const mk = month || parseMonthKey(r[1]) || "";
+    const it = {
+      id: uid(),
+      name,
+      month: mk,
+      day: day,
+      startDate: mk && day ? mkDate(mk, clampDay(mk, day)) : (parseAnyDate(r[1]) ? (function () { const p = parseAnyDate(r[1]); return p.y + "-" + pad2(p.m) + "-" + pad2(p.d); })() : ""),
+      planDays: num(r[2]),
+      actStartRaw: r[3] == null ? "" : String(r[3]),
+      actDays: num(r[4]),
+      percent: num(r[5]),
+      person: r[6] == null ? "" : String(r[6]).trim(),
+      cycle: r[7] == null ? "" : String(r[7]).trim(),
+      done: false,
+      doneDate: "",
+      src: "excel",
+      sheet: sheetName,
+      actStartDate: (function () { const p = parseAnyDate(r[3]); return p ? p.y + "-" + pad2(p.m) + "-" + pad2(p.d) : ""; })(),
+      createdAt: nowStr()
+    };
+    const finish = r[8] == null ? "" : String(r[8]).trim();
+    if (finish) { it.done = /完成|已完成|是|true|1|√|✓/.test(finish); }
+    items.push(it);
+  });
+  return { month, items };
+}
+
+async function readXlsxFile(file, forcedMonth) {
+  const buf = await file.arrayBuffer();
+  const files = await unzipXlsx(buf);
+  const sheets = parseWorkbook(files);
+  if (!sheets.length) throw new Error("没读到工作表");
+  return sheets.map(sh => rowsToItems(sh.name, sh.rows, forcedMonth));
+}
+
+/* ---------------------------- Excel 写出（OOXML） ---------------------------- */
+function xmlEsc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/\r/g, "");
+}
+function sheetXml(rows) {
+  // rows: 二维数组，值可为 string / number / null
+  const body = rows.map((row, ri) => {
+    const cells = row.map((v, ci) => {
+      const ref = idxToCol(ci) + (ri + 1);
+      if (v == null || v === "") return '<c r="' + ref + '"/>';
+      if (typeof v === "number" && isFinite(v)) return '<c r="' + ref + '"><v>' + v + "</v></c>";
+      return '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xmlEsc(v) + "</t></is></c>";
+    }).join("");
+    return '<row r="' + (ri + 1) + '">' + cells + "</row>"; // 每行必须 <row> 包裹
+  }).join("");
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<cols><col min="1" max="1" width="34" customWidth="1"/><col min="2" max="9" width="14" customWidth="1"/></cols>' +
+    "<sheetData>" + body + "</sheetData></worksheet>";
+}
+function buildXlsx(sheets) {
+  // sheets: [{name, rows}]
+  const files = [];
+  const wbSheets = sheets.map((s, i) =>
+    '<sheet name="' + xmlEsc(s.name) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>').join("");
+  files.push(["xl/workbook.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    "<sheets>" + wbSheets + "</sheets></workbook>"]);
+  files.push(["[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    sheets.map((s, i) => '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join("") +
+    "</Types>"]);
+  files.push(["_rels/.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    "</Relationships>"]);
+  files.push(["xl/_rels/workbook.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    sheets.map((s, i) => '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>').join("") +
+    "</Relationships>"]);
+  sheets.forEach((s, i) => files.push(["xl/worksheets/sheet" + (i + 1) + ".xml", sheetXml(s.rows)]));
+  return zipStore(files);
+}
+
+/* ------------------------------- ZIP 打包 ------------------------------- */
+let crcTable = null;
+function crc32(u8) {
+  if (!crcTable) {
+    crcTable = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      crcTable[n] = c >>> 0;
+    }
+  }
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = crcTable[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function zipStore(files) {
+  const enc = new TextEncoder();
+  const parts = [];
+  const central = [];
+  let offset = 0;
+  const dosTime = (function () { const d = new Date(); return ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xFFFF; })();
+  const dosDate = (function () { const d = new Date(); return (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF; })();
+  files.forEach(f => {
+    const nameBytes = enc.encode(f[0]);
+    const data = (f[1] instanceof Uint8Array) ? f[1] : enc.encode(f[1]);
+    const crc = crc32(data);
+    const local = new Uint8Array(30 + nameBytes.length);
+    const dv = new DataView(local.buffer);
+    dv.setUint32(0, 0x04034b50, true);
+    dv.setUint16(4, 20, true);
+    dv.setUint16(6, 0x0800, true); // UTF-8 文件名
+    dv.setUint16(8, 0, true);      // 存储（不压缩）
+    dv.setUint16(10, dosTime, true);
+    dv.setUint16(12, dosDate, true);
+    dv.setUint32(14, crc, true);
+    dv.setUint32(18, data.length, true);
+    dv.setUint32(22, data.length, true);
+    dv.setUint16(26, nameBytes.length, true);
+    dv.setUint16(28, 0, true);
+    local.set(nameBytes, 30);
+    parts.push(local, data);
+
+    const cen = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(cen.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    cen.set(nameBytes, 46);
+    central.push(cen);
+    offset += local.length + data.length;
+  });
+  const cdSize = central.reduce((a, b) => a + b.length, 0);
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  const out = parts.concat(central, [end]);
+  const total = out.reduce((a, b) => a + b.length, 0);
+  const buf = new Uint8Array(total);
+  let p = 0;
+  out.forEach(b => { buf.set(b, p); p += b.length; });
+  return buf;
+}
+
+/* ------------------------------- 导入逻辑 ------------------------------- */
+async function importPlanFiles(files, forcedMonth) {
+  let add = 0, sheets = 0, skipped = 0;
+  for (const f of files) {
+    try {
+      const parsed = await readXlsxFile(f, forcedMonth);
+      parsed.forEach(p => {
+        if (!p.items.length) return;
+        sheets++;
+        const exist = {};
+        state.items.forEach(it => { exist[(it.name || "") + "|" + (it.month || "")] = 1; });
+        p.items.forEach(it => {
+          const k = it.name + "|" + it.month;
+          if (exist[k]) { skipped++; return; }
+          exist[k] = 1; state.items.push(it); add++;
+        });
+      });
+    } catch (e) {
+      toast("读取 " + f.name + " 失败：" + e.message);
+    }
+  }
+  saveState(true);
+  renderAll();
+  if (add) toast("导入 " + add + " 件事" + (skipped ? "（跳过重复 " + skipped + "）" : ""));
+  else if (skipped) toast("没有新增：均为重复项（" + skipped + "）");
+  else toast("没有读到有效数据，请检查表头是否为 A:计划名称 B:计划开始时间 …");
+  return { add, skipped, sheets };
+}
+
+/* -------------------------------- 渲染 -------------------------------- */
+function renderHeader() {
+  const ms = allMonths();
+  const s = monthStats(ui.month || "");
+  $("#hdSub").innerHTML =
+    '<span>数据 <b>' + state.items.length + '</b> 条 · <b>' + ms.length + '</b> 个月</span>' +
+    '<span>今日 <b>' + todayStr() + " " + weekdayCN(todayStr()) + '</b></span>' +
+    (ui.month ? '<span>当前月 <b>' + monthLabel(ui.month) + '</b></span>' : "");
+}
+function renderMonthSelects() {
+  const ms = allMonths();
+  const cur = ui.month || "";
+  const opts = ['<option value="">全部月份</option>'].concat(ms.map(m =>
+    '<option value="' + m + '"' + (m === cur ? " selected" : "") + ">" + monthLabel(m) + "</option>")).join("");
+  ["#monthSel", "#stdMonth", "#delMonth"].forEach(sel => {
+    const el = $(sel); if (!el) return;
+    if (sel === "#monthSel") el.innerHTML = opts;
+    else {
+      const want = el.value;
+      el.innerHTML = ms.map(m => '<option value="' + m + '">' + monthLabel(m) + "</option>").join("") ||
+        '<option value="">（暂无月份）</option>';
+      if (want && ms.indexOf(want) >= 0) el.value = want;
+    }
+  });
+  if (!$("#nMonth").value) $("#nMonth").value = cur || (ms.length ? ms[ms.length - 1] : todayStr().slice(0, 4) + pad2(+todayStr().slice(5, 7)));
+}
+function renderStats() {
+  const s = monthStats(ui.month || "");
+  $("#stats").innerHTML =
+    '<div class="stat bad"><div class="n">' + s.overdue + '</div><div class="t">逾期未完成</div></div>' +
+    '<div class="stat warn"><div class="n">' + s.todayN + '</div><div class="t">今天要处理</div></div>' +
+    '<div class="stat"><div class="n">' + s.doing + '</div><div class="t">进行中</div></div>' +
+    '<div class="stat ok"><div class="n">' + s.done + '</div><div class="t">已完成</div></div>';
+}
+function badgeHtml(it) {
+  const out = [];
+  if (isDone(it)) out.push('<span class="badge ok">✓ 已完成</span>');
+  else if (isOverdue(it)) out.push('<span class="badge bad">逾期 ' + Math.max(1, Math.round((new Date(todayStr()) - new Date(it.startDate)) / 86400000)) + ' 天</span>');
+  else if (isToday(it)) out.push('<span class="badge warn">今天</span>');
+  if (it.month) out.push('<span class="badge brand">' + monthLabel(it.month) + "</span>");
+  if (it.sheet) out.push('<span class="badge">表:' + it.sheet + "</span>");
+  return out.join("");
+}
+function cardHtml(it) {
+  const done = isDone(it), od = isOverdue(it), td = isToday(it);
+  const cls = done ? "done" : (od ? "overdue" : (td ? "today" : "todo"));
+  const p = effPercent(it);
+  const open = ui.open[it.id] ? " open" : "";
+  const endDate = it.startDate && it.planDays ? addDays(it.startDate, Math.max(0, Math.round(it.planDays) - 1)) : "";
+  return '<div class="card ' + cls + open + '" data-id="' + it.id + '">' +
+    '<div class="c-top">' +
+      '<div class="c-name' + (done ? " strike" : "") + '">' + esc(it.name || "（未命名）") + "</div>" +
+      '<button class="btn ghost" data-act="toggle" data-id="' + it.id + '" style="min-height:44px;padding:0 10px;font-size:13px">' + (open ? "收起" : "编辑") + "</button>" +
+    "</div>" +
+    '<div class="c-badges">' + badgeHtml(it) + "</div>" +
+    '<div class="c-meta">' +
+      "<span>计划 <b>" + (it.startDate ? fmtDate(it.startDate) + " " + weekdayCN(it.startDate) : "—") + "</b>" + (it.day ? "（" + it.day + "号）" : "") + "</span>" +
+      "<span>工期 <b>" + (it.planDays != null ? it.planDays + " 天" : "—") + "</b>" + (endDate ? " · 至 " + fmtDate(endDate) : "") + "</span>" +
+      (it.person ? "<span>联系人 <b>" + esc(it.person) + "</b></span>" : "") +
+      (it.cycle ? "<span>周期 <b>" + esc(it.cycle) + "</b></span>" : "") +
+      (it.doneDate ? "<span>完成 <b>" + fmtDate(it.doneDate) + "</b></span>" : "") +
+    "</div>" +
+    '<div class="bar' + (done ? " done" : "") + '"><i style="width:' + p + '%"></i></div>' +
+    '<div class="c-body">' +
+      '<div class="field" style="margin-bottom:9px"><label>完成状态（点选，任一条件成立即算已完成）</label>' +
+        '<div class="swatch">' +
+          '<span class="pill' + (done ? " on ok" : "") + '" data-act="setdone" data-id="' + it.id + '" data-v="1">✓ 已完成</span>' +
+          '<span class="pill' + (!done ? " on" : "") + '" data-act="setdone" data-id="' + it.id + '" data-v="0">进行中</span>' +
+        "</div></div>" +
+      '<div class="row">' +
+        '<div class="field"><label>完成日期</label><input type="date" value="' + (it.doneDate || "") + '" data-act="doneDate" data-id="' + it.id + '"></div>' +
+        '<div class="field"><label>进度 %</label><input type="number" min="0" max="100" step="1" value="' + (num(it.percent) == null ? "" : num(it.percent)) + '" data-act="percent" data-id="' + it.id + '"></div>' +
+      "</div>" +
+      '<div class="row">' +
+        '<div class="field"><label>计划开始（几号）</label><input type="number" min="1" max="31" value="' + (it.day == null ? "" : it.day) + '" data-act="day" data-id="' + it.id + '"></div>' +
+        '<div class="field"><label>计划工期(天)</label><input type="number" min="1" value="' + (it.planDays == null ? "" : it.planDays) + '" data-act="planDays" data-id="' + it.id + '"></div>' +
+        '<div class="field"><label>月份</label><input type="text" inputmode="numeric" value="' + esc(it.month || "") + '" data-act="month" data-id="' + it.id + '"></div>' +
+      "</div>" +
+      '<div class="row">' +
+        '<div class="field"><label>实际开始</label><input type="date" value="' + (it.actStartDate || "") + '" data-act="actStartDate" data-id="' + it.id + '"></div>' +
+        '<div class="field"><label>实际工期(天)</label><input type="number" min="0" value="' + (it.actDays == null ? "" : it.actDays) + '" data-act="actDays" data-id="' + it.id + '"></div>' +
+      "</div>" +
+      '<div class="row">' +
+        '<div class="field"><label>联系人</label><input type="text" value="' + esc(it.person || "") + '" data-act="person" data-id="' + it.id + '"></div>' +
+        '<div class="field"><label>工作周期</label><input type="text" value="' + esc(it.cycle || "") + '" data-act="cycle" data-id="' + it.id + '"></div>' +
+      "</div>" +
+      '<div class="row">' +
+        '<button class="btn ghost" data-act="doneToday" data-id="' + it.id + '">今天完成</button>' +
+        '<button class="btn ghost" data-act="set100" data-id="' + it.id + '">进度 100%</button>' +
+        '<button class="btn danger" data-act="del" data-id="' + it.id + '">删除</button>' +
+      "</div>" +
+    "</div>" +
+  "</div>";
+}
+
+function renderList() {
+  let list = state.items.slice();
+  if (ui.month) list = list.filter(it => it.month === ui.month);
+  const q = ui.q.trim().toLowerCase();
+  if (q) list = list.filter(it => ((it.name || "") + " " + (it.person || "") + " " + (it.cycle || "")).toLowerCase().indexOf(q) >= 0);
+  const f = ui.filter;
+  if (f === "todo") list = list.filter(it => !isDone(it));
+  else if (f === "overdue") list = list.filter(isOverdue);
+  else if (f === "doing") list = list.filter(isDoing);
+  else if (f === "done") list = list.filter(isDone);
+
+  // 置顶“今天要处理”：逾期未完成 + 今天到期未完成
+  const pinned = list.filter(it => isOverdue(it) || isToday(it) && !isDone(it));
+  const pinIds = {};
+  pinned.forEach(it => pinIds[it.id] = 1);
+  pinned.sort((a, b) => (a.startDate || "9999").localeCompare(b.startDate || "9999"));
+  const rest = list.filter(it => !pinIds[it.id]);
+  rest.sort((a, b) => {
+    const da = isDone(a) ? 1 : 0, db = isDone(b) ? 1 : 0;
+    if (da !== db) return da - db;
+    return String(a.startDate || "9999").localeCompare(String(b.startDate || "9999"));
+  });
+
+  const emptyHtml = '<div class="empty">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14h8M8 17.5h5"/></svg>' +
+    "<div>这里还没有计划</div><div style=\"font-size:13px;margin-top:4px\">去「导入」页读入 Excel，或点右上角「+ 新增」</div></div>";
+
+  if (pinned.length) {
+    $("#pinnedWrap").innerHTML = '<div class="sec-title bad"><span class="dot"></span>今天要处理 <span class="cnt">（含已逾期未完成 · ' + pinned.length + '）</span></div>' +
+      pinned.map(cardHtml).join("");
+  } else {
+    $("#pinnedWrap").innerHTML = '<div class="sec-title"><span class="dot" style="background:#12a05c"></span>今天要处理 <span class="cnt">（暂无 · 进度良好）</span></div>';
+  }
+  $("#listWrap").innerHTML = (pinned.length ? '<div class="sec-title">其他计划 <span class="cnt">（' + rest.length + '）</span></div>' : "") +
+    (rest.length ? rest.map(cardHtml).join("") : (pinned.length ? "" : emptyHtml));
+  renderStats();
+}
+function renderOverview() {
+  const ms = allMonths();
+  if (!ms.length) { $("#overview").innerHTML = '<div class="empty" style="padding:12px">暂无数据</div>'; return; }
+  $("#overview").innerHTML = ms.map(m => {
+    const s = monthStats(m);
+    const pct = s.total ? Math.round(s.done / s.total * 100) : 0;
+    return '<div class="list-item"><div class="nm"><b>' + monthLabel(m) + "</b>" +
+      '<div class="sub">共 ' + s.total + " · 已完成 " + s.done + " · 进行中 " + s.doing + " · 逾期 " + s.overdue + "</div></div>" +
+      '<div style="font-weight:700;color:' + (pct >= 100 ? "#12a05c" : "#2f6bff") + '">' + pct + "%</div></div>";
+  }).join("");
+}
+function renderAll() {
+  renderHeader(); renderMonthSelects(); renderList(); renderOverview();
+}
+
+/* -------------------------------- 交互 -------------------------------- */
+function findItem(id) { for (let i = 0; i < state.items.length; i++) if (state.items[i].id === id) return state.items[i]; return null; }
+
+function updateItem(id, patch, silent) {
+  const it = findItem(id); if (!it) return;
+  Object.keys(patch).forEach(k => { it[k] = patch[k]; });
+  if (it.month && it.day) it.startDate = mkDate(it.month, clampDay(it.month, it.day));
+  if (!silent) saveState();
+}
+function setDone(id, v) {
+  const it = findItem(id); if (!it) return;
+  if (v) {
+    it.done = true;
+    if (!it.doneDate) it.doneDate = todayStr();
+    it.percent = 100;
+  } else {
+    it.done = false; it.doneDate = "";
+    if (num(it.percent) != null && num(it.percent) >= 100) it.percent = 90;
+  }
+  saveState();
+}
+
+function bindEvents() {
+  // Tab 切换
+  $$("nav.tabs button").forEach(b => b.onclick = () => {
+    $$("nav.tabs button").forEach(x => x.classList.toggle("on", x === b));
+    $$(".tabpane").forEach(p => p.classList.toggle("on", p.id === "pane-" + b.dataset.tab));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  $("#monthSel").onchange = e => { ui.month = e.target.value; renderAll(); };
+  $("#statusSel").onchange = e => { ui.filter = e.target.value; renderList(); };
+  let qt = null;
+  $("#searchInp").oninput = e => { clearTimeout(qt); const v = e.target.value; qt = setTimeout(() => { ui.q = v; renderList(); }, 180); };
+
+  // 列表事件（委托）
+  document.addEventListener("click", ev => {
+    const el = ev.target.closest("[data-act]"); if (!el) return;
+    const id = el.dataset.id, act = el.dataset.act;
+    if (act === "toggle") { ui.open[id] = !ui.open[id]; renderList(); return; }
+    if (act === "setdone") { setDone(id, el.dataset.v === "1"); return; }
+    if (act === "doneToday") { const it = findItem(id); if (it) { it.done = true; it.doneDate = todayStr(); it.percent = 100; saveState(); } return; }
+    if (act === "set100") { const it = findItem(id); if (it) { it.done = true; it.percent = 100; if (!it.doneDate) it.doneDate = todayStr(); saveState(); } return; }
+    if (act === "del") {
+      confirmBox("删除这件事？", (findItem(id) || {}).name || "", "删除").then(ok => {
+        if (!ok) return;
+        state.deleted[id] = new Date().toISOString();   // 留墓碑，好把"删除"同步到其它设备
+        state.items = state.items.filter(x => x.id !== id);
+        saveState(); toast("已删除");
+      });
+      return;
+    }
+  });
+  // 列表输入（委托 change：失焦/回车提交，避免每敲一个字母就重渲染）
+  document.addEventListener("change", ev => {
+    const el = ev.target.closest("[data-act]"); if (!el || !el.dataset.id) return;
+    const act = el.dataset.act, id = el.dataset.id;
+    if (act === "toggle" || act === "setdone" || act === "del" || act === "doneToday" || act === "set100") return;
+    let v = el.value;
+    if (act === "percent" || act === "planDays" || act === "actDays" || act === "day") v = num(v);
+    if (act === "month") { const mk = parseMonthKey(v); v = mk || String(v).trim(); }
+    if (act === "day" && v != null) v = Math.max(1, Math.min(31, Math.round(v)));
+    updateItem(id, (function () { const o = {}; o[act] = v; return o; })());
+    toast("已保存");
+  });
+
+  // 导入：计划
+  const filePlan = $("#filePlan"), fileStd = $("#fileStd");
+  $("#dropPlan").onclick = () => filePlan.click();
+  $("#dropStd").onclick = () => fileStd.click();
+  filePlan.onchange = async e => {
+    if (!e.target.files.length) return;
+    await importPlanFiles(Array.from(e.target.files), null);
+    e.target.value = "";
+  };
+  fileStd.onchange = async e => {
+    if (!e.target.files.length) return;
+    const mk = $("#stdMonth").value;
+    if (!mk) { toast("请先在计划里有一个月份，或手工新增一条"); e.target.value = ""; return; }
+    await importPlanFiles(Array.from(e.target.files), mk);
+    e.target.value = "";
+  };
+  [["#dropPlan", filePlan], ["#dropStd", fileStd]].forEach(pair => {
+    const dz = $(pair[0]);
+    ["dragenter", "dragover"].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add("hi"); }));
+    ["dragleave", "drop"].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove("hi"); }));
+    dz.addEventListener("drop", async e => {
+      const fs = e.dataTransfer && e.dataTransfer.files ? Array.from(e.dataTransfer.files).filter(f => /\.xlsx$/i.test(f.name)) : [];
+      if (!fs.length) { toast("请拖入 .xlsx 文件"); return; }
+      const forced = pair[1] === fileStd ? ($("#stdMonth").value || null) : null;
+      if (pair[1] === fileStd && !forced) { toast("请先选择要带入的月份"); return; }
+      await importPlanFiles(fs, forced);
+    });
+  });
+
+  // 手工新增
+  $("#btnAddManual").onclick = () => {
+    const name = $("#nName").value.trim();
+    if (!name) { toast("请填写计划名称"); $("#nName").focus(); return; }
+    const mk = parseMonthKey($("#nMonth").value);
+    if (!mk) { toast("月份格式：202609"); $("#nMonth").focus(); return; }
+    let day = num($("#nDay").value);
+    if (day == null) day = 1;
+    day = clampDay(mk, day);
+    const it = {
+      id: uid(), name, month: mk, day, startDate: mkDate(mk, day),
+      planDays: num($("#nDur").value), actStartDate: "", actDays: null, percent: null,
+      person: $("#nPerson").value.trim(), cycle: $("#nCycle").value.trim(),
+      done: false, doneDate: "", src: "manual", createdAt: nowStr()
+    };
+    state.items.push(it);
+    $("#nName").value = ""; $("#nDay").value = ""; $("#nDur").value = ""; $("#nPerson").value = ""; $("#nCycle").value = "";
+    ui.month = mk;
+    saveState();
+    toast("已加入 " + monthLabel(mk));
+  };
+  $("#btnQuickAdd").onclick = () => {
+    const btn = $$("nav.tabs button").filter(b => b.dataset.tab === "import")[0];
+    if (btn) btn.click();
+    setTimeout(() => $("#nName").focus(), 150);
+  };
+
+  // 备份
+  $("#btnExportJson").onclick = () => {
+    if (!state.items.length) { toast("暂无数据可导出"); return; }
+    const payload = { app: "工作计划展示台", version: 2, exportedAt: nowStr(), items: state.items, deleted: state.deleted };
+    const text = JSON.stringify(payload, null, 2);
+    const name = "工作计划备份_" + todayStr().replace(/-/g, "") + ".json";
+    safeDownload(name, ["\ufeff" + text], "application/json;charset=utf-8");
+    toast("已发起下载：" + name);
+  };
+  $("#btnImportJson").onclick = () => $("#fileJson").click();
+  $("#fileJson").onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const obj = JSON.parse(String(rd.result).replace(/^\ufeff/, ""));
+        const items = Array.isArray(obj) ? obj : (obj.items || []);
+        if (!Array.isArray(items)) throw new Error("格式不正确");
+        const exist = {}; state.items.forEach(it => exist[it.id] = 1);
+        let add = 0;
+        items.forEach(raw => {
+          if (!raw || !raw.name) return;
+          const it = Object.assign({}, raw);
+          if (!it.id || exist[it.id]) it.id = uid();
+          exist[it.id] = 1;
+          if (!it.month) it.month = parseMonthKey(it.startDate || "") || "";
+          if (it.day == null) it.day = toDay(it.startDate);
+          state.items.push(it); add++;
+        });
+        if (obj && obj.deleted && typeof obj.deleted === "object") {
+          Object.keys(obj.deleted).forEach(k => {
+            if (!state.deleted[k] || new Date(state.deleted[k]) < new Date(obj.deleted[k])) state.deleted[k] = obj.deleted[k];
+          });
+        }
+        saveState(); toast("导入 " + add + " 条");
+      } catch (err) { toast("导入失败：" + err.message); }
+    };
+    rd.readAsText(f);
+    e.target.value = "";
+  };
+  $("#btnExportXlsx").onclick = () => {
+    if (!state.items.length) { toast("暂无数据可导出"); return; }
+    const byMonth = {};
+    state.items.forEach(it => { const k = it.month || "未标月份"; (byMonth[k] = byMonth[k] || []).push(it); });
+    const keys = Object.keys(byMonth).sort();
+    const sheets = keys.map(k => {
+      const rows = [["计划名称", "计划开始时间", "计划工期(天)", "实际开始时间", "实际工期(天)", "完成百分比(%)", "联系人", "工作周期", "完成状态", "完成日期"]];
+      byMonth[k].sort((a, b) => (a.day || 99) - (b.day || 99)).forEach(it => {
+        const f = it.startDate ? fmtDate(it.startDate) : (it.day ? it.day + "号" : "");
+        rows.push([
+          it.name || "", f, it.planDays == null ? "" : it.planDays,
+          it.actStartDate ? fmtDate(it.actStartDate) : (it.actStartRaw || ""),
+          it.actDays == null ? "" : it.actDays,
+          num(it.percent) == null ? "" : num(it.percent),
+          it.person || "", it.cycle || "",
+          isDone(it) ? "已完成" : "进行中",
+          it.doneDate ? fmtDate(it.doneDate) : ""
+        ]);
+      });
+      return { name: k, rows };
+    });
+    let bytes;
+    try { bytes = buildXlsx(sheets); }
+    catch (err) { toast("生成 Excel 失败：" + err.message); return; }
+    const name = "工作计划导出_" + todayStr().replace(/-/g, "") + ".xlsx";
+    safeDownload(name, [bytes], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    toast("已发起下载：" + name);
+  };
+
+  // 删除
+  $("#btnDelMonth").onclick = () => {
+    const mk = $("#delMonth").value;
+    if (!mk) { toast("没有可删除的月份"); return; }
+    const n = state.items.filter(it => it.month === mk).length;
+    if (!n) { toast("该月没有计划"); return; }
+    confirmBox("删除 " + monthLabel(mk) + " 的全部计划？", "共 " + n + " 条，删除后不可撤销（建议先导出 JSON 备份）。", "删除").then(ok => {
+      if (!ok) return;
+      const nowIso = new Date().toISOString();
+      state.items.filter(it => it.month === mk).forEach(it => { state.deleted[it.id] = nowIso; });
+      state.items = state.items.filter(it => it.month !== mk);
+      if (ui.month === mk) ui.month = "";
+      saveState(); toast("已删除 " + monthLabel(mk) + " 的 " + n + " 条");
+    });
+  };
+  $("#btnClearAll").onclick = () => {
+    confirmBox("清空全部数据？", "所有计划都会被删除，且不可撤销。", "清空").then(ok => {
+      if (!ok) return;
+      const nowIso = new Date().toISOString();
+      state.items.forEach(it => { state.deleted[it.id] = nowIso; });
+      state.items = []; ui.month = ""; saveState(); toast("已清空");
+    });
+  };
+
+  $("#fallbackClose").onclick = () => $("#fallbackModal").classList.remove("on");
+  $("#fallbackModal").onclick = e => { if (e.target.id === "fallbackModal") e.currentTarget.classList.remove("on"); };
+}
+
+/* ========================================================================
+   服务器同步（走本机隧道/局域网服务时自动启用）
+   页面加载时探测 /__info__：探到就开启，探不到（如 GitHub Pages）静默退回纯本地
+   ======================================================================== */
+function detectServerSync() {
+  if (location.protocol === "file:") return false;    // 本地双击打开，无服务器
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", "__info__", false);               // 同步探测，保证首屏渲染前就知道结果
+    xhr.send(null);
+    if (xhr.status === 200) {
+      const info = JSON.parse(xhr.responseText || "{}");
+      return info && info.sync === true;
+    }
+  } catch (e) {}                                       // 探不到就当纯静态托管
+  return false;
+}
+async function apiPlans(body) {
+  const r = await fetch("api/plans", body === undefined ? { method: "GET" }
+    : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+/** 采纳服务器上比本地新的记录（本地新改动优先，不会被旧数据盖掉） */
+function mergeServerData(data) {
+  const byId = {};
+  state.items.forEach(it => { if (it && it.id) byId[it.id] = it; });
+  const del = state.deleted;
+  let add = 0, upd = 0, rm = 0;
+  (data.items || []).forEach(p => {
+    if (!p || !p.id) return;
+    if (del[p.id]) return;
+    const loc = byId[p.id];
+    if (!loc) { byId[p.id] = p; add++; return; }
+    const st = new Date(loc._snapAt || loc.syncedAt || 0).getTime();
+    const pt = new Date(p.revAt || 0).getTime();
+    if (pt > st && (p.rev || 0) >= (loc.rev || 0)) { byId[p.id] = p; upd++; }
+  });
+  Object.keys(data.deleted || {}).forEach(id => {
+    if (byId[id]) { delete byId[id]; rm++; }
+    if (!del[id] || new Date(del[id]) < new Date(data.deleted[id])) del[id] = data.deleted[id];
+  });
+  state.items = Object.keys(byId).map(k => byId[k]);
+  return { add, upd, rm };
+}
+/** 拉一次（合并到本地并重绘） */
+async function syncLocalPull(opts) {
+  opts = opts || {};
+  try {
+    const data = await apiPlans();
+    const st = mergeServerData(data);
+    state.items.forEach(it => { if (!it.rev) { it.rev = 1; it.revAt = it.revAt || new Date().toISOString(); } });
+    DC.dirty = false;
+    DC.lastLocal = new Date();
+    const clean = Object.assign({}, state, { items: state.items.map(it => { const c = Object.assign({}, it); delete c._snap; return c; }) });
+    localStorage.setItem(STORE_KEY, JSON.stringify(clean));   // 直接落盘，不再触发 touch
+    renderAll();
+    if (!opts.silent && (st.add || st.upd || st.rm)) toast("已同步：新增 " + st.add + " · 更新 " + st.upd + " · 删除 " + st.rm);
+    syncRender();
+    return { ok: true, st };
+  } catch (e) {
+    DC.lastErr = "同步失败：" + e.message;
+    syncRender();
+    return { ok: false, error: e.message };
+  }
+}
+/** 推一次（本地改动 → 服务器，2 秒防抖） */
+function syncLocalPush() {
+  if (!DC.localReady) return;
+  DC.dirty = true;
+  clearTimeout(DC.timer);
+  DC.timer = setTimeout(async () => {
+    try {
+      const payload = {
+        items: state.items.map(it => { const c = Object.assign({}, it); delete c._snap; return c; }),
+        deleted: state.deleted
+      };
+      const r = await apiPlans(payload);
+      DC.dirty = false; DC.lastLocal = new Date();
+      // 服务器端可能已把别处的新改动合并进来，顺手采纳
+      if (r && Array.isArray(r.items)) {
+        const st = mergeServerData(r);
+        if (st.add || st.upd || st.rm) renderAll();
+      }
+      syncRender();
+    } catch (e) {
+      DC.lastErr = "上传失败：" + e.message;
+      syncRender();
+    }
+  }, 2000);
+}
+
+
+/* ========================================================================
+   云端同步（Supabase）· 可选模块
+   - 走服务器同步时不需要它；想跨网络长期同步（电脑关机也能同步）时才配置
+   - 只做"整库按记录合并"，冲突规则：谁最后改谁赢，本地未同步的改动优先
+   - 依赖注入：所有网络访问走 syncFetch()，便于离线测试
+   ======================================================================== */
+const SYNC_SQL = [
+  "-- 工作计划展示台 · 云端同步建表脚本（在 Supabase SQL Editor 里整段 Run）",
+  "create table if not exists public.plans (",
+  "  id          text primary key,",
+  "  team        text not null,",
+  "  payload     jsonb not null,",
+  "  deleted     boolean not null default false,",
+  "  updated_at  timestamptz not null default now()",
+  ");",
+  "create index if not exists plans_team_updated_idx on public.plans (team, updated_at);",
+  "",
+  "alter table public.plans enable row level security;",
+  "",
+  "drop policy if exists plans_team_all on public.plans;",
+  "create policy plans_team_all on public.plans",
+  "  for all to anon, authenticated",
+  "  using  (team = (coalesce(nullif(current_setting('request.headers', true), ''), '{}')::jsonb ->> 'x-team'))",
+  "  with check (team = (coalesce(nullif(current_setting('request.headers', true), ''), '{}')::jsonb ->> 'x-team'));"
+].join("\n");
+
+function syncDB() {
+  try { return JSON.parse(localStorage.getItem(SYNC_KEY) || "null"); } catch (e) { return null; }
+}
+function syncSaveDB(db) {
+  try { localStorage.setItem(SYNC_KEY, JSON.stringify(db)); } catch (e) {}
+}
+function syncReady(db) {
+  db = db || DC.db;
+  return !!(db && db.enabled && db.url && db.key && db.team);
+}
+/** 所有网络访问的唯一出口（测试时整体替换） */
+function syncFetch(url, opts) { return fetch(url, opts); }
+
+function syncHeaders(db) {
+  return {
+    "apikey": db.key,
+    "Authorization": "Bearer " + db.key,
+    "Content-Type": "application/json",
+    "x-team": db.team,
+    "Prefer": "resolution=merge-duplicates,return=minimal"
+  };
+}
+function syncRestUrl(db, query) { return db.url.replace(/\/+$/, "") + "/rest/v1/" + SYNC_TABLE + (query || ""); }
+
+async function syncPull(db, sinceIso) {
+  const q = "?select=id,payload,deleted,updated_at&team=eq." + encodeURIComponent(db.team) +
+    "&order=updated_at.asc&limit=5000" + (sinceIso ? "&updated_at=gt." + encodeURIComponent(sinceIso) : "");
+  const r = await syncFetch(syncRestUrl(db, q), { headers: syncHeaders(db), method: "GET" });
+  if (!r.ok) throw new Error("拉取失败 HTTP " + r.status + " " + (await r.text()).slice(0, 160));
+  const j = await r.json();
+  return Array.isArray(j) ? j : [];
+}
+async function syncPush(db, rows) {
+  if (!rows.length) return;
+  const r = await syncFetch(syncRestUrl(db), { method: "POST", headers: syncHeaders(db), body: JSON.stringify(rows) });
+  if (!r.ok) throw new Error("上传失败 HTTP " + r.status + " " + (await r.text()).slice(0, 160));
+}
+/** 只更新同步元信息，不触发 rev 递增、不触发再次同步（避免自我循环） */
+function syncMetaSave() {
+  state.updatedAt = nowStr();
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+  try { localStorage.setItem(SYNC_KEY, JSON.stringify(DC.db)); } catch (e) {}
+}
+
+/**
+ * 合并规则（核心，离线可测）：
+ *  - 云端条目本地没见过 → 直接采纳
+ *  - 云端比本地"上次同步时间"新 → 云端赢（手机上改的进度能同步回电脑）
+ *  - 本地在上次同步之后又改过 → 本地赢，稍后推上去
+ *  - 两边都动过 → 比 rev，再比时间
+ */
+function syncMerge(cloudRows) {
+  const byId = {};
+  state.items.forEach(it => { if (it && it.id) byId[it.id] = it; });
+  const del = state.deleted;
+  let add = 0, upd = 0, delApplied = 0, pushed = 0, skipped = 0;
+  const localSeconds = t => Math.floor(new Date(t || 0).getTime() / 1000);
+
+  cloudRows.forEach(row => {
+    const id = row.id;
+    const cAt = row.updated_at;
+    if (row.deleted) {
+      if (byId[id]) {
+        const it = byId[id];
+        const localTouchedAfter = it.revAt && (!it.syncedAt || localSeconds(it.revAt) > localSeconds(it.syncedAt));
+        if (localTouchedAfter) { pushed++; return; }   // 本地有新改动，保留并推上去覆盖"删除"
+        delete byId[id];
+        delApplied++;
+      }
+      if (!del[id] || new Date(del[id]) < new Date(cAt)) del[id] = cAt;
+      return;
+    }
+    const c = row.payload;
+    if (!c || !c.id) { skipped++; return; }
+    const loc = byId[id];
+    if (loc) {
+      const localTouchedAfter = loc.revAt && (!loc.syncedAt || localSeconds(loc.revAt) > localSeconds(loc.syncedAt));
+      const cloudNewer = !loc.syncedAt || localSeconds(cAt) > localSeconds(loc.syncedAt);
+      if (!localTouchedAfter && cloudNewer) {
+        byId[id] = Object.assign({}, c, { syncedAt: cAt });
+        upd++;
+      } else if (localTouchedAfter && (c.rev || 0) > (loc.rev || 0) && !cloudNewer) {
+        byId[id] = Object.assign({}, c, { syncedAt: cAt });
+        upd++;
+      } else {
+        if (localTouchedAfter) pushed++;
+        else skipped++;
+      }
+    } else {
+      if (del[id] && new Date(del[id]) >= new Date(cAt)) { skipped++; return; }  // 本地已删，别复活
+      byId[id] = Object.assign({}, c, { syncedAt: cAt });
+      add++;
+    }
+  });
+
+  // 清理过期墓碑（90 天）
+  const cut = Date.now() - 90 * 86400000;
+  Object.keys(del).forEach(k => { if (new Date(del[k]).getTime() < cut) delete del[k]; });
+
+  state.items = Object.keys(byId).map(k => byId[k]);
+  return { add, upd, delApplied, pushed, skipped };
+}
+/** 组装要推上去的行（含删除墓碑） */
+function syncBuildPush() {
+  const rows = state.items.filter(it => it && it.id).map(it => ({
+    id: it.id, team: DC.db.team, payload: it, deleted: false, updated_at: new Date().toISOString()
+  }));
+  Object.keys(state.deleted).forEach(id => {
+    rows.push({ id: id, team: DC.db.team, payload: { id: id, name: "" }, deleted: true, updated_at: state.deleted[id] });
+  });
+  return rows;
+}
+
+async function syncNow(opts) {
+  opts = opts || {};
+  // 走服务器同步时，"立即同步"= 拉一次
+  if (DC.localReady) return syncLocalPull({ silent: !!(opts && opts.silent) });
+  const db = opts.db || DC.db;
+  if (!syncReady(db)) { DC.lastErr = "未配置同步"; syncRender(); return { ok: false, error: DC.lastErr }; }
+  if (DC.busy) return { ok: false, error: "正在同步中" };
+  DC.busy = true; DC.lastErr = ""; syncRender();
+  try {
+    const rows = await syncPull(db, db.lastPulledAt || null);
+    const stat = syncMerge(rows);
+    // 推送本机全部记录：云端用 updated_at 判定"后写覆盖"，两端各推一次即可收敛
+    await syncPush(db, syncBuildPush());
+    // 推送成功后，把所有条目的 syncedAt 标成"刚刚"，下次拉取才能正确判断谁赢
+    const now = new Date().toISOString();
+    state.items.forEach(it => { if (it) it.syncedAt = now; });
+    db.lastPulledAt = now; db.lastSyncAt = now; db.lastStat = stat; db.enabled = true;
+    DC.db = db; DC.dirty = false;
+    syncMetaSave();
+    if (!opts.silent) { renderAll(); toast("同步完成：新增 " + stat.add + " · 更新 " + stat.upd + " · 删除 " + stat.delApplied); }
+    return { ok: true, stat };
+  } catch (e) {
+    DC.lastErr = e.message || String(e);
+    syncRender();
+    if (!opts.silent) toast("同步失败：" + DC.lastErr);
+    return { ok: false, error: DC.lastErr };
+  } finally { DC.busy = false; syncRender(); }
+}
+/** 改动后自动同步（2 秒防抖），失败静默不打扰 */
+function syncSchedule() {
+  if (!syncReady() || DC.busy) return;
+  DC.dirty = true;
+  clearTimeout(DC.timer);
+  DC.timer = setTimeout(() => {
+    if (!syncReady()) return;
+    syncNow({ silent: true }).then(r => { if (!r.ok) DC.lastErr = "自动同步失败：" + r.error; syncRender(); });
+  }, 2000);
+}
+
+function syncRender() {
+  const el = $("#syncStatus"); if (!el) return;
+  const db = DC.db;
+  // —— 走本机服务器同步（无需任何配置）——
+  if (DC.localReady) {
+    const bits = [];
+    bits.push('状态：' + (DC.lastErr ? '<span style="color:#e33b3b">' + esc(DC.lastErr) + '</span>' : '<b style="color:#12a05c">已开启（服务器同步）</b>'));
+    bits.push('方式：当前页面由本机服务提供，<b>手机和电脑自动互通，无需填任何密钥</b>。');
+    if (DC.lastLocal) bits.push('上次同步：' + DC.lastLocal.toLocaleTimeString());
+    if (DC.dirty) bits.push('<span style="color:#e08a00">有本地改动，正在上传…</span>');
+    el.innerHTML = bits.map(b => '<div>' + b + '</div>').join("");
+    return;
+  }
+  if (!syncReady(db)) {
+    el.innerHTML = (db && (db.url || db.key || db.team))
+      ? '<span style="color:#e08a00">设置不完整</span>：项目地址、公开密钥、团队码三项都要填齐才能同步。'
+      : '当前是纯静态打开（如直接双击文件、或托管在 GitHub Pages），<b>没有服务器可同步</b>：数据各自存在本机浏览器里。<br>想要跨设备同步，把上面三项填齐（Supabase），或用本机的服务/隧道打开本页面。';
+    return;
+  }
+  const bits = [];
+  bits.push('状态：' + (DC.busy ? '<b>同步中…</b>' : (DC.lastErr ? '<span style="color:#e33b3b">' + esc(DC.lastErr) + '</span>' : '<b style="color:#12a05c">已开启</b>')));
+  bits.push('团队码：<b>' + esc(db.team) + '</b>');
+  if (db.lastSyncAt) bits.push('上次成功：' + new Date(db.lastSyncAt).toLocaleString());
+  if (db.lastStat) bits.push('上次结果：新增 ' + db.lastStat.add + ' · 更新 ' + db.lastStat.upd + ' · 删除 ' + db.lastStat.delApplied);
+  if (DC.dirty) bits.push('<span style="color:#e08a00">有本地改动待同步</span>');
+  el.innerHTML = bits.map(b => '<div>' + b + '</div>').join("");
+}
+
+function bindSyncEvents() {
+  const db = syncDB() || {};
+  if (db.url) $("#sbUrl").value = db.url;
+  if (db.key) $("#sbKey").value = db.key;
+  if (db.team) $("#sbTeam").value = db.team;
+  $("#sqlBox").value = SYNC_SQL;
+  DC.db = db;
+  DC.localReady = detectServerSync();      // 探到本机服务器就自动开启同步
+  syncRender();
+
+  $("#btnSyncSave").onclick = () => {
+    const url = $("#sbUrl").value.trim(), key = $("#sbKey").value.trim(), team = $("#sbTeam").value.trim();
+    if (!url || !key || !team) { toast("三项都要填：地址 / 密钥 / 团队码"); return; }
+    if (!/^https?:\/\//i.test(url)) { toast("项目地址要以 https:// 开头"); return; }
+    if (/service_role/i.test(key)) { toast("这是 service_role 密钥，不能放网页里，请用 anon public"); return; }
+    const old = syncDB() || {};
+    DC.db = { url: url, key: key, team: team, enabled: true, lastPulledAt: old.team === team ? (old.lastPulledAt || null) : null, lastSyncAt: old.team === team ? old.lastSyncAt : null, lastStat: null };
+    syncSaveDB(DC.db);
+    syncRender(); toast("已保存，点「立即同步」开始");
+  };
+  $("#btnSyncNow").onclick = () => {
+    if (!syncReady()) { toast("请先填好三项并保存设置"); return; }
+    syncNow();
+  };
+  $("#btnSyncOff").onclick = () => {
+    confirmBox("关闭云端同步？", "本机数据不会被删除，只是停止与云端互通。", "关闭").then(ok => {
+      if (!ok) return;
+      const db = syncDB() || {};
+      db.enabled = false; syncSaveDB(db); DC.db = db; DC.dirty = false;
+      syncRender(); toast("已关闭同步");
+    });
+  };
+  $("#btnCopySql").onclick = () => {
+    const ta = $("#sqlBox");
+    const done = () => toast("建表 SQL 已复制，去 Supabase SQL Editor 粘贴运行");
+    try {
+      ta.hidden = false; ta.select(); ta.setSelectionRange(0, ta.value.length);
+      const ok = document.execCommand && document.execCommand("copy");
+      ta.hidden = true;
+      if (ok) { done(); return; }
+    } catch (e) {}
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(SYNC_SQL).then(done).catch(() => {
+        ta.hidden = false; toast("请手动全选复制弹出的文本"); ta.focus();
+      });
+    } else { ta.hidden = false; toast("请手动全选复制下方文本"); }
+  };
+  // 回到前台 / 联网恢复 / 定时，都自动对齐一次
+  const wake = () => { if (DC.localReady || syncReady()) syncNow({ silent: true }); };
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") wake(); });
+  window.addEventListener("online", wake);
+  setInterval(() => { if (DC.localReady && document.visibilityState === "visible") syncNow({ silent: true }); }, 20000);
+}
+
+/* -------------------------------- 启动 -------------------------------- */
+function selftest() {
+  const problems = [];
+  if (typeof DecompressionStream !== "function") problems.push("DecompressionStream 缺失（导入 Excel 需要新版浏览器）");
+  try { localStorage.setItem("__t", "1"); localStorage.removeItem("__t"); } catch (e) { problems.push("localStorage 不可用（数据无法保存）"); }
+  return problems;
+}
+(function boot() {
+  loadState();
+  const ms = allMonths();
+  ui.month = ms.length ? ms[ms.length - 1] : "";
+  bindEvents();
+  bindSyncEvents();
+  renderAll();
+  const probs = selftest();
+  if (probs.length) toast(probs[0]);
+  const demo = location.search.indexOf("demo") >= 0 || location.hash === "#demo";
+  if (demo && !state.items.length) seedDemo();
+  if (DC.localReady) {
+    // 走本机服务器：上手就拉全量，并把本机已有的数据推上去
+    setTimeout(async () => {
+      await syncLocalPull({ silent: true });
+      if (state.items.length) syncLocalPush();
+      syncRender();
+    }, 300);
+  } else if (syncReady()) {
+    setTimeout(() => syncNow({ silent: true }), 1200);   // Supabase：打开页面自动对齐
+  }
+})();
+
+function seedDemo() {
+  const mk = todayStr().slice(0, 4) + todayStr().slice(5, 7);
+  const t = +todayStr().slice(8, 10);
+  state.deleted = {};
+  state.items = [
+    { id: uid(), name: "月度经营分析会（材料汇总）", month: mk, day: Math.max(1, t - 2), startDate: mkDate(mk, Math.max(1, t - 2)), planDays: 3, percent: 40, person: "张三", cycle: "每月一次", done: false, doneDate: "" },
+    { id: uid(), name: "本周现场巡检", month: mk, day: t, startDate: mkDate(mk, t), planDays: 1, percent: 0, person: "李四", cycle: "每周一次", done: false, doneDate: "" },
+    { id: uid(), name: "上月报表归档", month: mk, day: Math.min(28, t + 4), startDate: mkDate(mk, Math.min(28, t + 4)), planDays: 2, percent: 100, person: "王五", cycle: "每月一次", done: true, doneDate: todayStr() }
+  ];
+  saveState(true);
+  ui.month = mk;
+  renderAll();
+}
+</script>
+</body>
+</html>
