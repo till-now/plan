@@ -1552,8 +1552,10 @@ function syncHeaders(db) {
 function syncRestUrl(db, query) { return db.url.replace(/\/+$/, "") + "/rest/v1/" + SYNC_TABLE + (query || ""); }
 
 async function syncPull(db, sinceIso) {
+  // 不按时间水位过滤：水位是"本机上次同步时刻"，会漏掉其它设备稍早写入的记录。
+  // 改为整表拉取，逐条与本地 syncedAt/revAt 比对（条数有限，代价可接受）。
   const q = "?select=id,payload,deleted,updated_at&team=eq." + encodeURIComponent(db.team) +
-    "&order=updated_at.asc&limit=5000" + (sinceIso ? "&updated_at=gt." + encodeURIComponent(sinceIso) : "");
+    "&order=updated_at.asc&limit=5000";
   const r = await syncFetch(syncRestUrl(db, q), { headers: syncHeaders(db), method: "GET" });
   if (!r.ok) throw new Error("拉取失败 HTTP " + r.status + " " + (await r.text()).slice(0, 160));
   const j = await r.json();
@@ -1649,14 +1651,14 @@ async function syncNow(opts) {
   if (DC.busy) return { ok: false, error: "正在同步中" };
   DC.busy = true; DC.lastErr = ""; syncRender();
   try {
-    const rows = await syncPull(db, db.lastPulledAt || null);
+    const rows = await syncPull(db);      // 整表拉取，逐条比对（不再用时间水位）
     const stat = syncMerge(rows);
     // 推送本机全部记录：云端用 updated_at 判定"后写覆盖"，两端各推一次即可收敛
     await syncPush(db, syncBuildPush());
     // 推送成功后，把所有条目的 syncedAt 标成"刚刚"，下次拉取才能正确判断谁赢
     const now = new Date().toISOString();
     state.items.forEach(it => { if (it) it.syncedAt = now; });
-    db.lastPulledAt = now; db.lastSyncAt = now; db.lastStat = stat; db.enabled = true;
+    db.lastSyncAt = now; db.lastStat = stat; db.enabled = true;
     DC.db = db; DC.dirty = false;
     syncMetaSave();
     if (!opts.silent) { renderAll(); toast("同步完成：新增 " + stat.add + " · 更新 " + stat.upd + " · 删除 " + stat.delApplied); }
