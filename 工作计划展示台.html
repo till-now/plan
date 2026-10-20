@@ -1106,6 +1106,9 @@ function cardHtml(it) {
     "</div>" +
     '<div class="bar' + (done ? " done" : "") + '"><i style="width:' + p + '%"></i></div>' +
     '<div class="c-body">' +
+      '<div class="field" style="margin-bottom:9px"><label>计划名称（改完点别处或按回车即保存）</label>' +
+        '<input type="text" maxlength="120" value="' + esc(it.name || "") + '" data-act="name" data-id="' + it.id + '" placeholder="输入新的计划名称">' +
+      "</div>" +
       '<div class="field" style="margin-bottom:9px"><label>完成状态（点选，任一条件成立即算已完成）</label>' +
         '<div class="swatch">' +
           '<span class="pill' + (done ? " on ok" : "") + '" data-act="setdone" data-id="' + it.id + '" data-v="1">✓ 已完成</span>' +
@@ -1248,6 +1251,16 @@ function bindEvents() {
     const act = el.dataset.act, id = el.dataset.id;
     if (act === "toggle" || act === "setdone" || act === "del" || act === "doneToday" || act === "set100") return;
     let v = el.value;
+    // 计划名称：去空格后保存；空名称不允许（保留原名并提示）
+    if (act === "name") {
+      v = String(v == null ? "" : v).trim();
+      const cur = findItem(id);
+      if (!v) { toast("计划名称不能为空，已保留原名"); renderList(); return; }
+      if (cur && cur.name === v) return;      // 没改动就不触发保存
+      updateItem(id, { name: v });
+      toast("名称已更新");
+      return;
+    }
     if (act === "percent" || act === "planDays" || act === "actDays" || act === "day") v = num(v);
     if (act === "month") { const mk = parseMonthKey(v); v = mk || String(v).trim(); }
     if (act === "day" && v != null) v = Math.max(1, Math.min(31, Math.round(v)));
